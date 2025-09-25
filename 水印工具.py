@@ -1,23 +1,76 @@
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, colorchooser
-from PIL import Image, ImageDraw, ImageFont
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+水印工具 - 独立运行版本
+支持Windows、macOS、Linux
+"""
+
+import sys
 import os
-from typing import List, Optional
+
+# 检查Python版本
+if sys.version_info < (3, 6):
+    print("错误: 需要Python 3.6或更高版本")
+    if sys.platform == "win32":
+        input("按回车键退出...")
+    sys.exit(1)
+
+# 自动安装依赖
+def install_dependencies():
+    """自动安装必要的依赖"""
+    try:
+        import tkinter
+        from PIL import Image, ImageDraw, ImageFont
+        return True
+    except ImportError:
+        print("正在安装必要的依赖...")
+        try:
+            import subprocess
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "Pillow"])
+            print("依赖安装完成！")
+            return True
+        except:
+            print("依赖安装失败，请手动运行: pip install Pillow")
+            if sys.platform == "win32":
+                input("按回车键退出...")
+            return False
+
+# 检查依赖
+if not install_dependencies():
+    sys.exit(1)
+
+# 导入必要的库
+try:
+    import tkinter as tk
+    from tkinter import ttk, filedialog, messagebox, colorchooser
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError as e:
+    print(f"导入失败: {e}")
+    if sys.platform == "win32":
+        input("按回车键退出...")
+    sys.exit(1)
 
 class WatermarkApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("简单水印工具")
+        self.root.title("水印工具 v1.0")
         self.root.geometry("1000x700")
         
+        # 设置窗口图标（如果有的话）
+        try:
+            if sys.platform == "win32":
+                self.root.iconbitmap(default="icon.ico")
+        except:
+            pass
+        
         # 数据存储
-        self.images = []  # 存储图片路径
+        self.images = []
         self.current_image = None
         self.watermark_text = "水印"
-        self.watermark_color = (255, 255, 255)  # 白色
-        self.watermark_opacity = 128  # 透明度
-        self.watermark_position = (50, 50)  # 位置
-        self.watermark_size = 24  # 字体大小
+        self.watermark_color = (255, 255, 255)
+        self.watermark_opacity = 128
+        self.watermark_position = (50, 50)
+        self.watermark_size = 24
         
         self.setup_ui()
         
@@ -32,7 +85,7 @@ class WatermarkApp:
         control_frame.pack_propagate(False)
         
         # 图片导入区域
-        import_frame = ttk.LabelFrame(control_frame, text="图片导入", padding=10)
+        import_frame = ttk.LabelFrame(control_frame, text="📁 图片导入", padding=10)
         import_frame.pack(fill=tk.X, pady=(0, 10))
         
         ttk.Button(import_frame, text="选择图片", command=self.import_images).pack(fill=tk.X, pady=2)
@@ -44,7 +97,7 @@ class WatermarkApp:
         self.image_listbox.bind('<<ListboxSelect>>', self.on_image_select)
         
         # 水印设置区域
-        watermark_frame = ttk.LabelFrame(control_frame, text="水印设置", padding=10)
+        watermark_frame = ttk.LabelFrame(control_frame, text="✏️ 水印设置", padding=10)
         watermark_frame.pack(fill=tk.X, pady=(0, 10))
         
         # 水印文本
@@ -69,10 +122,10 @@ class WatermarkApp:
         opacity_scale.pack(fill=tk.X, pady=2)
         
         # 颜色选择
-        ttk.Button(watermark_frame, text="选择颜色", command=self.choose_color).pack(fill=tk.X, pady=5)
+        ttk.Button(watermark_frame, text="🎨 选择颜色", command=self.choose_color).pack(fill=tk.X, pady=5)
         
         # 位置调整
-        position_frame = ttk.LabelFrame(control_frame, text="位置调整", padding=10)
+        position_frame = ttk.LabelFrame(control_frame, text="📍 位置调整", padding=10)
         position_frame.pack(fill=tk.X, pady=(0, 10))
         
         # 预设位置按钮
@@ -88,21 +141,21 @@ class WatermarkApp:
             btn.grid(row=i//3, column=i%3, padx=2, pady=2, sticky=tk.W+tk.E)
         
         # 导出区域
-        export_frame = ttk.LabelFrame(control_frame, text="导出设置", padding=10)
+        export_frame = ttk.LabelFrame(control_frame, text="💾 导出设置", padding=10)
         export_frame.pack(fill=tk.X, pady=(0, 10))
         
         ttk.Button(export_frame, text="导出当前图片", command=self.export_current).pack(fill=tk.X, pady=2)
         ttk.Button(export_frame, text="批量导出", command=self.batch_export).pack(fill=tk.X, pady=2)
         
         # 右侧预览区域
-        preview_frame = ttk.LabelFrame(main_frame, text="预览", padding=10)
+        preview_frame = ttk.LabelFrame(main_frame, text="👁️ 预览", padding=10)
         preview_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
         # 预览画布
         self.canvas = tk.Canvas(preview_frame, bg='white')
         self.canvas.pack(fill=tk.BOTH, expand=True)
         
-        # 绑定鼠标事件用于拖拽水印
+        # 绑定鼠标事件
         self.canvas.bind('<Button-1>', self.on_canvas_click)
         self.canvas.bind('<B1-Motion>', self.on_canvas_drag)
         
@@ -225,11 +278,10 @@ class WatermarkApp:
         # 创建绘图对象
         draw = ImageDraw.Draw(watermarked)
         
-        # 计算水印位置（相对于缩放后的图片）
+        # 计算水印位置
         canvas_width = self.canvas.winfo_width()
         canvas_height = self.canvas.winfo_height()
         
-        # 计算图片在画布中的实际位置
         img_width = watermarked.width
         img_height = watermarked.height
         
@@ -315,6 +367,8 @@ class WatermarkApp:
             messagebox.showerror("错误", f"批量导出失败: {str(e)}")
 
 def main():
+    """主函数"""
+    print("启动水印工具...")
     root = tk.Tk()
     app = WatermarkApp(root)
     root.mainloop()

@@ -1,0 +1,93 @@
+name: Build Watermark App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+    
+    - name: Build Windows executable
+      run: |
+        pyinstaller --onefile --windowed --name=WatermarkApp watermark_app.py
+    
+    - name: Upload Windows artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: WatermarkApp-Windows
+        path: dist/WatermarkApp.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+    
+    - name: Build macOS executable
+      run: |
+        pyinstaller --onefile --windowed --name=WatermarkApp watermark_app.py
+    
+    - name: Create DMG
+      run: |
+        mkdir dmg_temp
+        cp -R dist/WatermarkApp.app dmg_temp/
+        hdiutil create -volname "WatermarkApp" -srcfolder dmg_temp -ov -format UDZO dist/WatermarkApp.dmg
+        rm -rf dmg_temp
+    
+    - name: Upload macOS artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: WatermarkApp-macOS
+        path: dist/WatermarkApp.dmg
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pyinstaller
+    
+    - name: Build Linux executable
+      run: |
+        pyinstaller --onefile --windowed --name=WatermarkApp watermark_app.py
+    
+    - name: Upload Linux artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: WatermarkApp-Linux
+        path: dist/WatermarkApp
